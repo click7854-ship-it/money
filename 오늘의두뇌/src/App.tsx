@@ -14,8 +14,8 @@ function dateBefore(key: string, days: number) {
   const [year, month, day] = key.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day - days)).toISOString().slice(0, 10);
 }
-function readProgress(): Record<string, Progress> {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+function readProgress(testMode: boolean): Record<string, Progress> {
+  try { return JSON.parse(localStorage.getItem(testMode ? `${STORAGE_KEY}-test` : STORAGE_KEY) || '{}'); } catch { return {}; }
 }
 function formatDate(key: string) {
   const [year, month, day] = key.split('-').map(Number);
@@ -23,12 +23,14 @@ function formatDate(key: string) {
 }
 
 export default function App() {
+  const isTestMode = new URLSearchParams(window.location.search).get('test') === '1';
   const date = useMemo(todayKey, []);
   const questions = useMemo(() => getDailyQuestions(date), [date]);
-  const [progressByDate, setProgressByDate] = useState(readProgress);
+  const [progressByDate, setProgressByDate] = useState(() => readProgress(isTestMode));
   const progress = progressByDate[date] ?? { answers: [], complete: false };
   const [selected, setSelected] = useState<number | null>(null);
   const [previewedIndex, setPreviewedIndex] = useState<number | null>(null);
+  const [testPanelOpen, setTestPanelOpen] = useState(true);
   const [toast, setToast] = useState('');
   const index = progress.answers.length;
   const isDone = progress.complete || index >= questions.length;
@@ -40,8 +42,8 @@ export default function App() {
   }, [index, isDone, previewedIndex, questions]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(progressByDate)); } catch { /* 저장 공간을 사용할 수 없는 환경 */ }
-  }, [progressByDate]);
+    try { localStorage.setItem(isTestMode ? `${STORAGE_KEY}-test` : STORAGE_KEY, JSON.stringify(progressByDate)); } catch { /* 저장 공간을 사용할 수 없는 환경 */ }
+  }, [isTestMode, progressByDate]);
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(''), 2200);
@@ -67,6 +69,28 @@ export default function App() {
     setSelected(null);
     setPreviewedIndex(null);
   };
+  const setTestScore = (targetScore: number) => {
+    const answers = questions.map((question, i) => i < targetScore ? question.answer : (question.answer === 0 ? 1 : 0));
+    setProgressByDate((current) => ({ ...current, [date]: { answers, complete: true } }));
+    setSelected(null);
+  };
+  const resetTestDay = () => {
+    setProgressByDate((current) => { const next = { ...current }; delete next[date]; return next; });
+    setSelected(null);
+    setPreviewedIndex(null);
+  };
+  const seedTestWeek = (days: number) => {
+    setProgressByDate((current) => {
+      const next = { ...current };
+      for (let i = 0; i < days; i++) {
+        const key = dateBefore(date, i);
+        const set = getDailyQuestions(key);
+        const answers = set.map((question, index) => index < (i === 0 ? 3 : 4) ? question.answer : (question.answer === 0 ? 1 : 0));
+        next[key] = { answers, complete: true };
+      }
+      return next;
+    });
+  };
   const shareResult = async () => {
     const text = `오늘의 두뇌 퀴즈 ${score}/5점! 당신의 오늘 점수는 몇 점인가요?`;
     try {
@@ -78,7 +102,8 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar"><div className="brand"><span className="brand-mark"><Brain size={20} strokeWidth={2.4} /></span><span>오늘의 두뇌</span></div><button className="icon-button" aria-label="결과 공유" onClick={shareResult}><Share2 size={19} /></button></header>
+      <header className="topbar"><div className="brand"><span className="brand-mark"><Brain size={20} strokeWidth={2.4} /></span><span>오늘의 두뇌</span></div><div className="top-actions">{isTestMode && <span className="test-mode-tag">TEST</span>}<button className="icon-button" aria-label="결과 공유" onClick={shareResult}><Share2 size={19} /></button></div></header>
+      {isTestMode && <section className="test-console"><button className="test-console-toggle" onClick={() => setTestPanelOpen((open) => !open)}><span><b>테스트 도구</b><small>진행·결과·주간 기록 상태를 빠르게 확인해요</small></span><ChevronRight className={testPanelOpen ? 'test-chevron open' : 'test-chevron'} size={17}/></button>{testPanelOpen && <div className="test-console-body"><div className="test-tool-group"><span className="test-tool-label">오늘 진행 상태</span><div className="test-actions"><button onClick={resetTestDay}>처음부터 시작</button><button onClick={() => { setProgressByDate((current) => ({ ...current, [date]: { answers: questions.slice(0, 2).map((q) => q.answer), complete: false } })); setSelected(null); }}>2문제 진행</button><button onClick={() => { setProgressByDate((current) => ({ ...current, [date]: { answers: questions.slice(0, 4).map((q) => q.answer), complete: false } })); setSelected(null); }}>마지막 문제</button></div></div><div className="test-tool-group"><span className="test-tool-label">결과 화면 · 점수 선택</span><div className="test-actions score-presets">{[0, 1, 3, 5].map((value) => <button className={score === value && isDone ? 'active' : ''} key={value} onClick={() => setTestScore(value)}>{value}점</button>)}</div></div><div className="test-tool-group"><span className="test-tool-label">주간 기록 예시</span><div className="test-actions"><button onClick={() => seedTestWeek(3)}>3일 연속 기록</button><button onClick={() => seedTestWeek(7)}>7일 기록 채우기</button><button onClick={() => setProgressByDate({})}>기록 전체 초기화</button></div></div><p className="test-storage-note">테스트 모드는 별도 저장 공간을 사용해 실제 진행 기록에 영향을 주지 않아요.</p></div>}</section>}
       <main className="main-content">
         <section className="welcome-row"><div><p className="eyebrow">YOUR DAILY BRAIN BOOST</p><h1>하루 5문제,<br />두뇌를 깨워요 <span>✦</span></h1><p className="date-label">{formatDate(date)}</p></div><div className="brain-illustration" aria-hidden="true"><div className="orb orb-one"/><div className="orb orb-two"/><Brain size={52} strokeWidth={1.65}/><Sparkles className="spark" size={19}/></div></section>
 
