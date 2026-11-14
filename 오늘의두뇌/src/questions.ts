@@ -48,8 +48,18 @@ function hashDate(value: string) {
 }
 
 const curatedQuestions = baseQuestionBank.map((question, index) => ({ ...question, id: `curated-${index + 1}` }));
-const memoryWords = ['기차', '구름', '나무', '연필', '바다', '시계', '모자', '컵', '열쇠', '사과', '우산', '고래', '토끼', '참새', '풍선', '책상', '거울', '신발', '수박', '가방', '연꽃', '우유', '소금', '장갑', '노을', '빗자루', '종이', '단추', '지도', '의자', '비누', '나침반'];
+const memoryWords = ['사과', '우산', '기차', '구름', '열쇠', '책', '안경', '꽃', '모자', '컵', '연필', '가방', '시계', '수건', '빵', '우유', '버스', '의자', '수박', '장갑', '전화기', '양말', '접시', '비누', '강아지', '자전거', '지갑', '나무', '수저', '달력', '창문', '신발'];
 const names = ['민수', '지안', '서준', '하윤', '도윤', '수아', '유진', '지호', '예린', '현우', '다은', '시우'];
+const oddOneOut = [
+  { group: ['사과', '배', '포도'], odd: '당근', label: '과일' },
+  { group: ['버스', '기차', '택시'], odd: '냉장고', label: '탈것' },
+  { group: ['월요일', '수요일', '금요일'], odd: '일요일', label: '평일' },
+  { group: ['숟가락', '젓가락', '포크'], odd: '베개', label: '식사 도구' },
+  { group: ['봄', '여름', '가을'], odd: '아침', label: '계절' },
+  { group: ['강아지', '고양이', '토끼'], odd: '장미', label: '동물' },
+  { group: ['셔츠', '바지', '치마'], odd: '수박', label: '옷' },
+  { group: ['삼각형', '네모', '동그라미'], odd: '연필', label: '도형' },
+];
 const generatedQuestions: Question[] = Array.from({ length: 500 }, (_, index) => {
   const variation = index + 1;
   const type = index % 4;
@@ -62,36 +72,32 @@ const generatedQuestions: Question[] = Array.from({ length: 500 }, (_, index) =>
     const options = memoryItems.map((_, offset) => memoryItems[(offset + shift) % memoryItems.length]);
     const answer = options.indexOf(memoryItems[position]);
     const positionName = ['첫', '두 번째', '세 번째', '마지막'][position];
-    return { id: `generated-memory-${variation}`, category: '기억력', prompt: `${positionName} 단어는 무엇이었나요?`, memoryItems, options, answer, explanation: `기억 목록에서 ${positionName}에 나온 단어는 ${memoryItems[position]}예요.` };
+    return { id: `generated-v2-memory-${variation}`, category: '기억력', prompt: `잠깐 보여드린 단어 중 ${positionName}에 나온 것은 무엇인가요?`, memoryItems, options, answer, explanation: `단어를 나온 순서대로 떠올리면 ${positionName} 단어는 ${memoryItems[position]}예요.` };
   }
   if (type === 1) {
-    const first = 5 + variation * 3;
-    const step = 3 + (variation % 13);
+    const step = 2 + (variation % 4);
+    const first = 2 + (variation % 8);
     const answer = first + step * 4;
     const options = [answer + step, answer - step, answer, answer + 1];
-    const correctIndex = 2;
-    return { id: `generated-number-${variation}`, category: '수리력', prompt: `규칙에 맞는 다음 수를 고르세요.\n${first}, ${first + step}, ${first + step * 2}, ${first + step * 3}, ?`, options: options.map((value) => value.toLocaleString('ko-KR')), answer: correctIndex, explanation: `매번 ${step}씩 커져요. 다음 수는 ${answer.toLocaleString('ko-KR')}예요.` };
+    return { id: `generated-v2-number-${variation}`, category: '수리력', prompt: `숫자가 같은 만큼씩 커집니다. 빈칸에 들어갈 수는 무엇인가요?\n${first}, ${first + step}, ${first + step * 2}, ${first + step * 3}, ?`, options: options.map((value) => String(value)), answer: 2, explanation: `숫자가 ${step}씩 커지므로 ${first + step * 3} 다음은 ${answer}예요.` };
   }
   if (type === 2) {
     const first = names[index % names.length];
     const second = names[(index + 3) % names.length];
     const third = names[(index + 7) % names.length];
-    const hours = Math.floor((variation - 1) / 60) + 1;
-    const minutes = (variation - 1) % 60;
+    const minutes = 5 + (variation % 6) * 5;
     const options = [third, first, second, '알 수 없음'];
     const topic = (name: string) => {
       const syllable = name.charCodeAt(name.length - 1) - 0xac00;
       return syllable >= 0 && syllable <= 11171 && syllable % 28 !== 0 ? '은' : '는';
     };
-    return { id: `generated-logic-${variation}`, category: '논리력', prompt: `도착 순서를 판단해 보세요.\n${first}${topic(first)} ${second}보다 ${hours}시간 ${minutes}분 먼저 도착했고, ${second}${topic(second)} ${third}보다 ${hours}시간 ${minutes}분 먼저 도착했어요.\n가장 늦게 도착한 사람은?`, options, answer: 0, explanation: `${third}가 가장 늦게 도착했어요.` };
+    return { id: `generated-v2-logic-${variation}`, category: '논리력', prompt: `세 사람이 약속 장소에 도착한 순서입니다.\n${first}는 ${second}보다 ${minutes}분 먼저 왔고, ${second}는 ${third}보다 ${minutes}분 먼저 왔습니다.\n가장 늦게 도착한 사람은 누구일까요?`, options, answer: 0, explanation: `${first}, ${second}, ${third} 순서로 도착했으므로 ${third}가 가장 늦어요.` };
   }
-  const symbols = ['▲', '●', '■', '◆'];
-  const first = symbols[(variation - 1) % symbols.length];
-  const second = symbols[variation % symbols.length];
-  const third = symbols[(variation + 1) % symbols.length];
-  const fourth = symbols[(variation + 2) % symbols.length];
-  const options = [`${first}${second}${first}${second}`, `${second}${first}${second}${first}`, `${first}${second}${second}${first}`, `${first}${first}${second}${second}`];
-  return { id: `generated-observation-${variation}`, category: '관찰력', prompt: `카드 ${variation}에서 같은 도형이 붙어 있는 배열은?`, options, answer: 2, explanation: `세 번째 배열에서 ${second}가 연속으로 나와요.` };
+  const item = oddOneOut[Math.floor((variation - 1) / 4) % oddOneOut.length];
+  const shift = variation % item.group.length;
+  const options = [...item.group.slice(shift), ...item.group.slice(0, shift), item.odd];
+  const answer = options.indexOf(item.odd);
+  return { id: `generated-v2-observation-${variation}`, category: '관찰력', prompt: `다음 중 나머지와 종류가 다른 것은 무엇인가요?`, options, answer, explanation: `다른 보기들은 모두 ${item.label}이고, ${item.odd}은(는) 여기에 속하지 않아요.` };
 });
 
 export const questionBank: Question[] = [...curatedQuestions, ...generatedQuestions];
@@ -99,6 +105,10 @@ const questionById = new Map(questionBank.map((question) => [question.id!, quest
 
 export function getQuestionsByIds(ids: string[]): Question[] {
   return ids.map((id) => questionById.get(id)).filter((question): question is Question => Boolean(question));
+}
+
+export function hasQuestionsByIds(ids: string[]): boolean {
+  return ids.length === 5 && ids.every((id) => questionById.has(id));
 }
 
 export function getLegacyDailyQuestions(dateKey: string): Question[] {
