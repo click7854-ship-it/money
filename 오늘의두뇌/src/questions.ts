@@ -1,4 +1,5 @@
 export type Question = {
+  id: string;
   category: '기억력' | '수리력' | '논리력' | '관찰력';
   prompt: string;
   memoryItems?: string[];
@@ -7,11 +8,11 @@ export type Question = {
   explanation: string;
 };
 
-export const questionBank: Question[] = [
+const baseQuestionBank: Omit<Question, 'id'>[] = [
   { category: '기억력', prompt: '두 번째 단어는 무엇이었나요?', memoryItems: ['사과', '우산', '기차', '구름'], options: ['사과', '우산', '기차', '구름'], answer: 1, explanation: '순서대로 떠올리면 두 번째 단어는 우산이에요.' },
   { category: '수리력', prompt: '다음 숫자에 들어갈 수는?\n3, 6, 12, 24, ?', options: ['30', '36', '48', '54'], answer: 2, explanation: '앞의 수에 2를 곱하는 규칙이에요. 24 × 2 = 48.' },
   { category: '논리력', prompt: '모든 장미는 꽃입니다.\n어떤 꽃은 빨간색입니다.\n반드시 참인 문장은 무엇일까요?', options: ['모든 꽃은 장미다', '모든 장미는 꽃이다', '모든 장미는 빨갛다', '빨간 꽃은 장미다'], answer: 1, explanation: '첫 번째 문장에서 이미 모든 장미가 꽃이라고 주어졌어요.' },
-  { category: '관찰력', prompt: '다른 하나를 찾아보세요.', options: ['▲ ● ▲ ●', '● ▲ ● ▲', '▲ ● ▲ ●', '▲ ● ● ▲'], answer: 3, explanation: '마지막 배열만 같은 도형이 두 번 이어져요.' },
+  { category: '관찰력', prompt: '다른 하나를 찾아보세요.', options: ['▲ ● ▲ ●', '● ▲ ● ▲', '▲ ● ● ▲', '● ● ▲ ▲'], answer: 2, explanation: '세 번째 배열만 같은 도형이 연달아 있어요.' },
   { category: '수리력', prompt: '사과 3개의 값이 1,200원입니다.\n사과 5개는 얼마일까요?', options: ['1,800원', '2,000원', '2,200원', '2,400원'], answer: 1, explanation: '한 개는 400원, 다섯 개는 2,000원이에요.' },
   { category: '논리력', prompt: '민수는 지수보다 키가 크고,\n지수는 현우보다 키가 큽니다.\n가장 키가 큰 사람은?', options: ['민수', '지수', '현우', '알 수 없음'], answer: 0, explanation: '민수 > 지수 > 현우 순서예요.' },
   { category: '기억력', prompt: '세 번째 색깔은 무엇이었나요?', memoryItems: ['파랑', '노랑', '초록', '빨강'], options: ['빨강', '파랑', '노랑', '초록'], answer: 3, explanation: '세 번째에 있던 색은 초록이에요.' },
@@ -36,7 +37,7 @@ export const questionBank: Question[] = [
   { category: '수리력', prompt: '48을 6으로 나눈 값에 2를 더하면?', options: ['8', '10', '12', '14'], answer: 1, explanation: '48 ÷ 6 = 8, 8 + 2 = 10이에요.' },
   { category: '기억력', prompt: '첫 번째 단어는 무엇이었나요?', memoryItems: ['기차', '구름', '나무', '연필'], options: ['연필', '기차', '구름', '나무'], answer: 1, explanation: '첫 번째에 있던 단어는 기차예요.' },
   { category: '논리력', prompt: '수진이는 보라보다 먼저 도착했고\n보라는 민호보다 먼저 도착했습니다.\n가장 늦게 도착한 사람은?', options: ['수진', '보라', '민호', '알 수 없음'], answer: 2, explanation: '수진 → 보라 → 민호 순으로 도착했어요.' },
-  { category: '관찰력', prompt: '다른 문자를 찾아보세요.', options: ['ㅂㅏㄷㅏ', 'ㅂㅏㄷㅏ', 'ㅂㅏㄷㅏ', 'ㅍㅏㄷㅏ'], answer: 3, explanation: '마지막 배열만 첫 자음이 ㅍ이에요.' },
+  { category: '관찰력', prompt: '두 번째 글자가 ‘ㄷ’인 단어를 찾아보세요.', options: ['바다', '바라', '바가', '바차'], answer: 0, explanation: '바다의 두 번째 글자 첫소리는 ㄷ이에요.' },
   { category: '수리력', prompt: '10,000원에서 3,500원을 쓰고\n2,000원을 더 받았습니다. 얼마가 남았나요?', options: ['7,500원', '8,000원', '8,500원', '9,000원'], answer: 2, explanation: '10,000 - 3,500 + 2,000 = 8,500원이에요.' },
 ];
 
@@ -46,9 +47,70 @@ function hashDate(value: string) {
   return hash >>> 0;
 }
 
-export function getDailyQuestions(dateKey: string): Question[] {
+const curatedQuestions = baseQuestionBank.map((question, index) => ({ ...question, id: `curated-${index + 1}` }));
+const memoryWords = ['기차', '구름', '나무', '연필', '바다', '시계', '모자', '컵', '열쇠', '사과', '우산', '고래', '토끼', '참새', '풍선', '책상', '거울', '신발', '수박', '가방', '연꽃', '우유', '소금', '장갑', '노을', '빗자루', '종이', '단추', '지도', '의자', '비누', '나침반'];
+const names = ['민수', '지안', '서준', '하윤', '도윤', '수아', '유진', '지호', '예린', '현우', '다은', '시우'];
+const generatedQuestions: Question[] = Array.from({ length: 500 }, (_, index) => {
+  const variation = index + 1;
+  const type = index % 4;
+  if (type === 0) {
+    const start = (index + 7) % memoryWords.length;
+    const stride = 2 * (Math.floor(index / memoryWords.length) % 16) + 1;
+    const memoryItems = Array.from({ length: 4 }, (_, offset) => memoryWords[(start + offset * stride) % memoryWords.length]);
+    const position = index % memoryItems.length;
+    const shift = 1 + (Math.floor(index / 4) % 3);
+    const options = memoryItems.map((_, offset) => memoryItems[(offset + shift) % memoryItems.length]);
+    const answer = options.indexOf(memoryItems[position]);
+    const positionName = ['첫', '두 번째', '세 번째', '마지막'][position];
+    return { id: `generated-memory-${variation}`, category: '기억력', prompt: `${positionName} 단어는 무엇이었나요?`, memoryItems, options, answer, explanation: `기억 목록에서 ${positionName}에 나온 단어는 ${memoryItems[position]}예요.` };
+  }
+  if (type === 1) {
+    const first = 5 + variation * 3;
+    const step = 3 + (variation % 13);
+    const answer = first + step * 4;
+    const options = [answer + step, answer - step, answer, answer + 1];
+    const correctIndex = 2;
+    return { id: `generated-number-${variation}`, category: '수리력', prompt: `규칙에 맞는 다음 수를 고르세요.\n${first}, ${first + step}, ${first + step * 2}, ${first + step * 3}, ?`, options: options.map((value) => value.toLocaleString('ko-KR')), answer: correctIndex, explanation: `매번 ${step}씩 커져요. 다음 수는 ${answer.toLocaleString('ko-KR')}예요.` };
+  }
+  if (type === 2) {
+    const first = names[index % names.length];
+    const second = names[(index + 3) % names.length];
+    const third = names[(index + 7) % names.length];
+    const hours = Math.floor((variation - 1) / 60) + 1;
+    const minutes = (variation - 1) % 60;
+    const options = [third, first, second, '알 수 없음'];
+    const topic = (name: string) => {
+      const syllable = name.charCodeAt(name.length - 1) - 0xac00;
+      return syllable >= 0 && syllable <= 11171 && syllable % 28 !== 0 ? '은' : '는';
+    };
+    return { id: `generated-logic-${variation}`, category: '논리력', prompt: `도착 순서를 판단해 보세요.\n${first}${topic(first)} ${second}보다 ${hours}시간 ${minutes}분 먼저 도착했고, ${second}${topic(second)} ${third}보다 ${hours}시간 ${minutes}분 먼저 도착했어요.\n가장 늦게 도착한 사람은?`, options, answer: 0, explanation: `${third}가 가장 늦게 도착했어요.` };
+  }
+  const symbols = ['▲', '●', '■', '◆'];
+  const first = symbols[(variation - 1) % symbols.length];
+  const second = symbols[variation % symbols.length];
+  const third = symbols[(variation + 1) % symbols.length];
+  const fourth = symbols[(variation + 2) % symbols.length];
+  const options = [`${first}${second}${first}${second}`, `${second}${first}${second}${first}`, `${first}${second}${second}${first}`, `${first}${first}${second}${second}`];
+  return { id: `generated-observation-${variation}`, category: '관찰력', prompt: `카드 ${variation}에서 같은 도형이 붙어 있는 배열은?`, options, answer: 2, explanation: `세 번째 배열에서 ${second}가 연속으로 나와요.` };
+});
+
+export const questionBank: Question[] = [...curatedQuestions, ...generatedQuestions];
+const questionById = new Map(questionBank.map((question) => [question.id!, question]));
+
+export function getQuestionsByIds(ids: string[]): Question[] {
+  return ids.map((id) => questionById.get(id)).filter((question): question is Question => Boolean(question));
+}
+
+export function getLegacyDailyQuestions(dateKey: string): Question[] {
   const seed = hashDate(dateKey);
-  const start = seed % questionBank.length;
+  const start = seed % curatedQuestions.length;
   const step = 7;
-  return Array.from({ length: 5 }, (_, i) => questionBank[(start + i * step) % questionBank.length]);
+  return Array.from({ length: 5 }, (_, i) => curatedQuestions[(start + i * step) % curatedQuestions.length]);
+}
+
+export function getDailyQuestions(dateKey: string, usedIds: ReadonlySet<string> = new Set()): Question[] {
+  return questionBank
+    .filter((question) => !usedIds.has(question.id!))
+    .sort((left, right) => hashDate(`${dateKey}:${left.id}`) - hashDate(`${dateKey}:${right.id}`) || left.id!.localeCompare(right.id!))
+    .slice(0, 5);
 }
